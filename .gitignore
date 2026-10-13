@@ -1,0 +1,17 @@
+.local/
+.env
+.env.*
+*.pem
+*.key
+*.pfx
+*.p12
+*.war
+*.jar
+*.log
+*kubeconfig*
+azure_known_hosts
+inventory.local.yml
+credentials*.yml
+credentials*.yaml
+__pycache__/
+*.retry
