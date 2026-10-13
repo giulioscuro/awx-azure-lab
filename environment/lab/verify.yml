@@ -1,0 +1,32 @@
+---
+- name: Verifica il target del laboratorio
+  hosts: tomcat_lab
+  gather_facts: false
+  pre_tasks:
+    - name: Prepara il controllo SSH
+      ansible.builtin.import_tasks: ../common/prepare-ssh.yml
+  tasks:
+    - name: Verifica connessione Ansible e Python
+      ansible.builtin.ping:
+
+    - name: Leggi la versione di Tomcat con il suo utente di servizio
+      become: true
+      ansible.builtin.command:
+        argv:
+          - runuser
+          - -u
+          - tomcat
+          - --
+          - /opt/tomcat/bin/version.sh
+      register: tomcat_version
+      changed_when: false
+
+    - name: Verifica Tomcat 9
+      ansible.builtin.assert:
+        that:
+          - "'Apache Tomcat/9.' in tomcat_version.stdout"
+
+    - name: Verifica la risposta HTTP locale
+      ansible.builtin.uri:
+        url: http://127.0.0.1:8080/
+        status_code: 200
