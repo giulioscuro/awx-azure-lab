@@ -1,0 +1,30 @@
+---
+- name: Prepara il controllo della chiave host SSH nel job
+  delegate_to: localhost
+  become: false
+  vars:
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+  block:
+    - name: Verifica la presenza della chiave host approvata in AWX
+      ansible.builtin.assert:
+        that:
+          - lab_ssh_known_hosts is defined
+          - lab_ssh_known_hosts | default('') | trim | length > 0
+        fail_msg: Configurare lab_ssh_known_hosts nell'inventario AWX con la chiave host verificata.
+
+    - name: Crea un file known_hosts temporaneo nell'Execution Environment
+      ansible.builtin.tempfile:
+        state: file
+        prefix: awx-lab-known-hosts-
+      register: lab_known_hosts_file
+
+    - name: Scrivi la chiave host approvata nel file temporaneo
+      ansible.builtin.copy:
+        content: "{{ lab_ssh_known_hosts | trim }}\n"
+        dest: "{{ lab_known_hosts_file.path }}"
+        mode: '0600'
+      no_log: true
+
+    - name: Configura SSH con verifica obbligatoria della chiave host
+      ansible.builtin.set_fact:
+        ansible_ssh_common_args: "-o StrictHostKeyChecking=yes -o UserKnownHostsFile={{ lab_known_hosts_file.path }}"
