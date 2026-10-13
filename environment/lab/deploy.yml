@@ -1,0 +1,40 @@
+---
+- name: Distribuisci il WAR Apache di esempio su Tomcat 9
+  hosts: tomcat_lab
+  gather_facts: false
+  become: true
+  vars:
+    sample_war_url: https://tomcat.apache.org/tomcat-9.0-doc/appdev/sample/sample.war
+    sample_war_checksum: sha256:89b33caa5bf4cfd235f060c396cb1a5acb2734a1366db325676f48c5f5ed92e5
+  pre_tasks:
+    - name: Prepara il controllo SSH
+      ansible.builtin.import_tasks: ../common/prepare-ssh.yml
+  tasks:
+    - name: Verifica che Tomcat sia attivo
+      ansible.builtin.command: systemctl is-active tomcat9
+      changed_when: false
+
+    - name: Scarica il WAR verificando TLS e checksum
+      ansible.builtin.get_url:
+        url: "{{ sample_war_url }}"
+        dest: /opt/tomcat/webapps/sample.war
+        checksum: "{{ sample_war_checksum }}"
+        owner: tomcat
+        group: tomcat
+        mode: '0640'
+        validate_certs: true
+        timeout: 60
+
+    - name: Attendi la servlet Hello World
+      ansible.builtin.uri:
+        url: http://127.0.0.1:8080/sample/hello
+        status_code: 200
+        return_content: true
+      register: sample_response
+      until: sample_response.status | default(0) == 200 and 'Hello, World' in (sample_response.content | default(''))
+      retries: 60
+      delay: 2
+
+    - name: Mostra il risultato
+      ansible.builtin.debug:
+        msg: WAR sample distribuito; servlet Hello World verificata con HTTP 200.
